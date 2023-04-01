@@ -2,7 +2,7 @@
 Repositório da discplina de projeto de banco de dados semestre 2023.1
 ## Projeto UBER
 
-###Exercício 1 <h3>
+## Exercício 01
 
 1. Criar tabelas de Usuário, Motorista, Carro, Corrida, Avaliação e comentário da corrida, Tabela de preço da corrida.
 2. Popular banco de dados com:
@@ -20,3 +20,4 @@ k_inicio|km_final   |taxa
 
 * Obs: Popular o banco quando for necessário para apresentar os resultados.
 
+### Exercício 02
