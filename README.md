@@ -31,3 +31,15 @@ k_inicio|km_final   |taxa
 7. HARD#2: utilize a extensão de pesquisa full text search e crie uma query que permita a busca por termos similares apresentando as contas e posts que contém um determinado termo, com similaridade a partir de 0.7. Campos de seleção: código da entidade, nome da tabela da entidade, campo de busca.
 
 Obs: Popular o banco quando for necessário para apresentar os resultados.
+
+### Exercício 3 - procedures e functions
+
+1. Precisamos de uma função para calcular o valor da corrida, na qual receberá por parâmetro a quantidade de quilômetros e retornará o valor. Utilize a tabela de preço da corrida. (implementar a lógica de pegar o valor correto do km).
+2. Criar uma procedure que atualize o valor do preço total das corridas utilizando a tabela de preço da corrida. Utilize a função para pegar o preço.
+Nova funcionalidade: O carro pode ser de 3 tipos: básico, médio e luxo. Ajustar a tabela e os dados no banco, populando o banco de dados com pelo menos uma corrida para cada tipo.
+4. Com a nova funcionalidade de tipo de carro, a forma de calcular sofrerá um ajuste. Para isso, crie OUTRA função para calcular o preço da corrida levando em consideração o tipo do carro.
+Fórmula de cálculo pelo tipo do carro:
+ * Carro básico: multiplicar o valor x 1.153
+ * Carro médio: multiplicar o valor x 1.379
+ * Carro luxo: multiplicar o valor x 1.586
+5. Replique a procedure do item 2 e atualize-a utilizando a nova função do item 4.
