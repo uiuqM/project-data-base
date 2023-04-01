@@ -43,3 +43,9 @@ Fórmula de cálculo pelo tipo do carro:
  * Carro médio: multiplicar o valor x 1.379
  * Carro luxo: multiplicar o valor x 1.586
 5. Replique a procedure do item 2 e atualize-a utilizando a nova função do item 4.
+
+### Exercício 4 - views and triggers
+
+1. O time de marketing está precisando de informações sobre os carros cadastrados no aplicativo. Para isso, crie uma view que apresente o código e modelo, marca, cor e ano do carro, bem como o código do proprietário e a média de avaliação do mesmo.
+2. Com a nova forma de cálculo, será preciso auditar as alterações nos preços das corridas, permitindo verificar possíveis problemas. Assim, quando houver alguma alteração no valor da corrida, devemos salvar isso. Crie uma tabela auxiliar e armazene o código da corrida, o valor anterior e novo valor, bem como o momento da ocorrência.
+
