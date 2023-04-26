@@ -49,3 +49,7 @@ Fórmula de cálculo pelo tipo do carro:
 1. O time de marketing está precisando de informações sobre os carros cadastrados no aplicativo. Para isso, crie uma view que apresente o código e modelo, marca, cor e ano do carro, bem como o código do proprietário e a média de avaliação do mesmo.
 2. Com a nova forma de cálculo, será preciso auditar as alterações nos preços das corridas, permitindo verificar possíveis problemas. Assim, quando houver alguma alteração no valor da corrida, devemos salvar isso. Crie uma tabela auxiliar e armazene o código da corrida, o valor anterior e novo valor, bem como o momento da ocorrência.
 
+### Exercício 5 - Índex
+
+1. A partir do contexto do seu time, define 2 tabelas importantes e os índices que precisam ser criados. Na apresentação, explique o porquê da importância dos índices nas respectivas colunas.
+
