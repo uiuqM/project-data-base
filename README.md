@@ -20,6 +20,8 @@ k_inicio|km_final   |taxa
 
 * Obs: Popular o banco quando for necessário para apresentar os resultados.
 
+[solucao](https://github.com/uiuqM/project-data-base/blob/main/Exercicio_01/solucao.md)
+
 ### Exercício 2 - consultas avançadas
 
 1. Crie uma query que liste os motoristas com seus carros, apresentando o nome do motorista, código do motorista, nome do carro, placa e cor do carro, quantidade de estrelas do motorista, quantidade de corrida. 
@@ -31,6 +33,8 @@ k_inicio|km_final   |taxa
 7. HARD#2: utilize a extensão de pesquisa full text search e crie uma query que permita a busca por termos similares apresentando as contas e posts que contém um determinado termo, com similaridade a partir de 0.7. Campos de seleção: código da entidade, nome da tabela da entidade, campo de busca.
 
 Obs: Popular o banco quando for necessário para apresentar os resultados.
+
+[solucao](https://github.com/uiuqM/project-data-base/blob/main/Exercicio_02/solucao.md)
 
 ### Exercício 3 - procedures e functions
 
@@ -44,12 +48,18 @@ Fórmula de cálculo pelo tipo do carro:
  * Carro luxo: multiplicar o valor x 1.586
 5. Replique a procedure do item 2 e atualize-a utilizando a nova função do item 4.
 
+[solucao](https://github.com/uiuqM/project-data-base/blob/main/Exercicio_03/solucao.md)
+
 ### Exercício 4 - views and triggers
 
 1. O time de marketing está precisando de informações sobre os carros cadastrados no aplicativo. Para isso, crie uma view que apresente o código e modelo, marca, cor e ano do carro, bem como o código do proprietário e a média de avaliação do mesmo.
 2. Com a nova forma de cálculo, será preciso auditar as alterações nos preços das corridas, permitindo verificar possíveis problemas. Assim, quando houver alguma alteração no valor da corrida, devemos salvar isso. Crie uma tabela auxiliar e armazene o código da corrida, o valor anterior e novo valor, bem como o momento da ocorrência.
 
+[solucao](https://github.com/uiuqM/project-data-base/blob/main/Exercicio_04/solucao.md)
+
 ### Exercício 5 - Índex
 
 1. A partir do contexto do seu time, define 2 tabelas importantes e os índices que precisam ser criados. Na apresentação, explique o porquê da importância dos índices nas respectivas colunas.
+
+[solucao](https://github.com/uiuqM/project-data-base/blob/main/Exercicio_05/solucao.md)
 
