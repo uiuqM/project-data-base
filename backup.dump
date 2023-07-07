@@ -1,0 +1,888 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 15.2
+-- Dumped by pg_dump version 15.0
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: cube; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS cube WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION cube; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION cube IS 'data type for multidimensional cubes';
+
+
+--
+-- Name: earthdistance; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS earthdistance WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION earthdistance; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION earthdistance IS 'calculate great-circle distances on the surface of the Earth';
+
+
+--
+-- Name: add_column_val_calc(); Type: PROCEDURE; Schema: public; Owner: uber
+--
+
+CREATE PROCEDURE public.add_column_val_calc()
+    LANGUAGE plpgsql
+    AS $$
+	begin
+		update corrida set preco =(select calc_preco_novo from calc_preco_novo(corrida.distancia_km, carro.categoria))
+								   from carro 
+								   join tipo_carro on tipo_carro.id = carro.categoria;
+end;
+$$;
+
+
+ALTER PROCEDURE public.add_column_val_calc() OWNER TO uber;
+
+--
+-- Name: add_column_val_calc(double precision); Type: PROCEDURE; Schema: public; Owner: uber
+--
+
+CREATE PROCEDURE public.add_column_val_calc(IN al double precision)
+    LANGUAGE plpgsql
+    AS $$
+
+begin
+
+	UPDATE corrida set corrida.preco = calc_preco(al) where corrida.preco = null;
+ 
+end;
+$$;
+
+
+ALTER PROCEDURE public.add_column_val_calc(IN al double precision) OWNER TO uber;
+
+--
+-- Name: audit_alt_preco_corridas(); Type: FUNCTION; Schema: public; Owner: uber
+--
+
+CREATE FUNCTION public.audit_alt_preco_corridas() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+	begin
+  	insert into alteracao_prec_corridas(id_corrida, preco_antigo, novo_preco, data_hora) values(new.id_corrida, old.preco, new.preco, current_timestamp);
+    return new old;
+  end;
+$$;
+
+
+ALTER FUNCTION public.audit_alt_preco_corridas() OWNER TO uber;
+
+--
+-- Name: calc_preco(double precision); Type: FUNCTION; Schema: public; Owner: uber
+--
+
+CREATE FUNCTION public.calc_preco(distancia double precision) RETURNS TABLE(valor double precision)
+    LANGUAGE plpgsql
+    AS $$
+declare
+    valor real;
+ 
+begin
+        return query
+        select (distancia*taxa)+5
+        from preco_corrida
+        where distancia > preco_corrida.km_inicio and distancia <= preco_corrida.km_final;
+END;
+$$;
+
+
+ALTER FUNCTION public.calc_preco(distancia double precision) OWNER TO uber;
+
+--
+-- Name: calc_preco_novo(double precision, integer); Type: FUNCTION; Schema: public; Owner: uber
+--
+
+CREATE FUNCTION public.calc_preco_novo(distancia double precision, cat integer) RETURNS TABLE(valor double precision)
+    LANGUAGE plpgsql
+    AS $$
+declare
+    valor real;
+ 
+begin
+        return query
+        select round((distancia*taxa)+5)*tipo_carro.taxa_carro
+        from preco_corrida, tipo_carro
+        where distancia > preco_corrida.km_inicio and distancia <= preco_corrida.km_final and cat = tipo_carro.id;
+END;
+$$;
+
+
+ALTER FUNCTION public.calc_preco_novo(distancia double precision, cat integer) OWNER TO uber;
+
+--
+-- Name: calcula_preco(double precision); Type: FUNCTION; Schema: public; Owner: uber
+--
+
+CREATE FUNCTION public.calcula_preco(distancia double precision) RETURNS TABLE(valor real)
+    LANGUAGE plpgsql
+    AS $$
+declare distancia double precision;
+BEGIN
+RETURN query
+	(SELECT preco_corrida.km_inicio,
+			preco_corrida.km_final
+			from preco_corrida
+			where distancia between preco_corrida.km_inicio and preco_corrida.km_final
+	);
+END;
+$$;
+
+
+ALTER FUNCTION public.calcula_preco(distancia double precision) OWNER TO uber;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: alteracao_prec_corridas; Type: TABLE; Schema: public; Owner: uber
+--
+
+CREATE TABLE public.alteracao_prec_corridas (
+    id_alteracao integer NOT NULL,
+    id_corrida integer NOT NULL,
+    preco_antigo double precision NOT NULL,
+    novo_preco double precision NOT NULL,
+    data_hora timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.alteracao_prec_corridas OWNER TO uber;
+
+--
+-- Name: ateração_prec_corridas_id_alteracao_seq; Type: SEQUENCE; Schema: public; Owner: uber
+--
+
+CREATE SEQUENCE public."ateração_prec_corridas_id_alteracao_seq"
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public."ateração_prec_corridas_id_alteracao_seq" OWNER TO uber;
+
+--
+-- Name: ateração_prec_corridas_id_alteracao_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: uber
+--
+
+ALTER SEQUENCE public."ateração_prec_corridas_id_alteracao_seq" OWNED BY public.alteracao_prec_corridas.id_alteracao;
+
+
+--
+-- Name: avaliacao; Type: TABLE; Schema: public; Owner: uber
+--
+
+CREATE TABLE public.avaliacao (
+    id_avalicao integer NOT NULL,
+    id_usuario integer NOT NULL,
+    id_motorista integer NOT NULL,
+    id_corrida integer NOT NULL,
+    nota double precision NOT NULL,
+    comentario text,
+    data_avaliacao timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.avaliacao OWNER TO uber;
+
+--
+-- Name: avaliacao_id_seq; Type: SEQUENCE; Schema: public; Owner: uber
+--
+
+ALTER TABLE public.avaliacao ALTER COLUMN id_avalicao ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.avaliacao_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: carro; Type: TABLE; Schema: public; Owner: uber
+--
+
+CREATE TABLE public.carro (
+    id_carro integer NOT NULL,
+    chassi character varying(20) NOT NULL,
+    modelo character varying(255) NOT NULL,
+    marca character varying(255) NOT NULL,
+    placa character varying(10) NOT NULL,
+    cor character varying(50) NOT NULL,
+    ano integer NOT NULL,
+    categoria integer
+);
+
+
+ALTER TABLE public.carro OWNER TO uber;
+
+--
+-- Name: carro_id_seq; Type: SEQUENCE; Schema: public; Owner: uber
+--
+
+ALTER TABLE public.carro ALTER COLUMN id_carro ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.carro_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: carros_cadastrados_no_app; Type: VIEW; Schema: public; Owner: uber
+--
+
+CREATE VIEW public.carros_cadastrados_no_app AS
+SELECT
+    NULL::integer AS id_carro,
+    NULL::character varying(255) AS modelo,
+    NULL::character varying(255) AS marca,
+    NULL::character varying(50) AS cor,
+    NULL::integer AS ano,
+    NULL::integer AS id_motorista,
+    NULL::double precision AS avg;
+
+
+ALTER TABLE public.carros_cadastrados_no_app OWNER TO uber;
+
+--
+-- Name: comentario_corrida; Type: TABLE; Schema: public; Owner: uber
+--
+
+CREATE TABLE public.comentario_corrida (
+    id_comentario integer NOT NULL,
+    id_corrida integer NOT NULL,
+    id_usuario integer NOT NULL,
+    comentario text NOT NULL
+);
+
+
+ALTER TABLE public.comentario_corrida OWNER TO uber;
+
+--
+-- Name: comentario_corrida_id_seq; Type: SEQUENCE; Schema: public; Owner: uber
+--
+
+ALTER TABLE public.comentario_corrida ALTER COLUMN id_comentario ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.comentario_corrida_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: corrida; Type: TABLE; Schema: public; Owner: uber
+--
+
+CREATE TABLE public.corrida (
+    id_corrida integer NOT NULL,
+    id_usuario integer NOT NULL,
+    id_motorista integer NOT NULL,
+    id_carro integer NOT NULL,
+    data_hora_inicio timestamp without time zone NOT NULL,
+    data_hora_fim timestamp without time zone NOT NULL,
+    distancia_km double precision NOT NULL,
+    duracao_minutos integer NOT NULL,
+    local_origem point,
+    local_destino point,
+    preco double precision
+);
+
+
+ALTER TABLE public.corrida OWNER TO uber;
+
+--
+-- Name: corrida_id_seq; Type: SEQUENCE; Schema: public; Owner: uber
+--
+
+ALTER TABLE public.corrida ALTER COLUMN id_corrida ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.corrida_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: motorista; Type: TABLE; Schema: public; Owner: uber
+--
+
+CREATE TABLE public.motorista (
+    id_motorista integer NOT NULL,
+    nome_motorista character varying(255) NOT NULL,
+    email character varying(255) NOT NULL,
+    senha character varying(255) NOT NULL,
+    cpf character varying(20) NOT NULL,
+    data_nascimento date NOT NULL,
+    telefone character varying(20),
+    cnh character varying(20),
+    id_carro integer
+);
+
+
+ALTER TABLE public.motorista OWNER TO uber;
+
+--
+-- Name: motorista_id_seq; Type: SEQUENCE; Schema: public; Owner: uber
+--
+
+ALTER TABLE public.motorista ALTER COLUMN id_motorista ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.motorista_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: preco_corrida; Type: TABLE; Schema: public; Owner: uber
+--
+
+CREATE TABLE public.preco_corrida (
+    km_inicio double precision,
+    km_final double precision,
+    taxa real
+);
+
+
+ALTER TABLE public.preco_corrida OWNER TO uber;
+
+--
+-- Name: tipo_carro; Type: TABLE; Schema: public; Owner: uber
+--
+
+CREATE TABLE public.tipo_carro (
+    id integer NOT NULL,
+    categoria character varying(14) NOT NULL,
+    taxa_carro double precision
+);
+
+
+ALTER TABLE public.tipo_carro OWNER TO uber;
+
+--
+-- Name: tipo_carro_id_seq; Type: SEQUENCE; Schema: public; Owner: uber
+--
+
+ALTER TABLE public.tipo_carro ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.tipo_carro_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: usuario; Type: TABLE; Schema: public; Owner: uber
+--
+
+CREATE TABLE public.usuario (
+    id_usuario integer NOT NULL,
+    nome_usuario character varying(255) NOT NULL,
+    email character varying(255) NOT NULL,
+    senha character varying(255) NOT NULL,
+    cpf character varying(20) NOT NULL,
+    data_nascimento date NOT NULL,
+    telefone character varying(20),
+    data_cadatro timestamp without time zone
+);
+
+
+ALTER TABLE public.usuario OWNER TO uber;
+
+--
+-- Name: usuario_id_seq; Type: SEQUENCE; Schema: public; Owner: uber
+--
+
+ALTER TABLE public.usuario ALTER COLUMN id_usuario ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.usuario_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: alteracao_prec_corridas id_alteracao; Type: DEFAULT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.alteracao_prec_corridas ALTER COLUMN id_alteracao SET DEFAULT nextval('public."ateração_prec_corridas_id_alteracao_seq"'::regclass);
+
+
+--
+-- Data for Name: alteracao_prec_corridas; Type: TABLE DATA; Schema: public; Owner: uber
+--
+
+COPY public.alteracao_prec_corridas (id_alteracao, id_corrida, preco_antigo, novo_preco, data_hora) FROM stdin;
+2	20	13.79	12.23	2023-04-20 18:47:37.63879
+3	20	12.23	13.79	2023-04-20 18:50:37.37909
+4	18	17.927	17.927	2023-04-20 18:50:37.37909
+5	19	15.169	15.169	2023-04-20 18:50:37.37909
+6	16	26.201	26.201	2023-04-20 18:50:37.37909
+7	45	33.096000000000004	33.096000000000004	2023-04-20 18:50:37.37909
+8	43	34.475	34.475	2023-04-20 18:50:37.37909
+9	17	39.991	39.991	2023-04-20 18:50:37.37909
+10	42	44.128	44.128	2023-04-20 18:50:37.37909
+11	44	52.402	52.402	2023-04-20 18:50:37.37909
+12	41	97.909	97.909	2023-04-20 18:50:37.37909
+13	20	13.79	20	2023-04-20 22:48:15.455116
+\.
+
+
+--
+-- Data for Name: avaliacao; Type: TABLE DATA; Schema: public; Owner: uber
+--
+
+COPY public.avaliacao (id_avalicao, id_usuario, id_motorista, id_corrida, nota, comentario, data_avaliacao) FROM stdin;
+1	2	2	16	4.5	Bom	2023-03-22 08:34:00
+2	3	4	20	5	Motorista educado e carro limpo.	2023-03-22 16:25:00
+3	2	5	19	3	O motorista foi um pouco impaciente no trânsito e não me ajudou com a minha bagagem.	2023-03-22 14:23:00
+4	4	1	18	4	Gostei do carro, mas o motorista poderia ter sido um pouco mais comunicativo durante a corrida.	2023-03-22 12:32:00
+5	5	3	17	5	Corrida excelente! O motorista foi muito educado e atencioso, além do carro ser bastante confortável.	2023-03-22 10:55:00
+\.
+
+
+--
+-- Data for Name: carro; Type: TABLE DATA; Schema: public; Owner: uber
+--
+
+COPY public.carro (id_carro, chassi, modelo, marca, placa, cor, ano, categoria) FROM stdin;
+2	67952404016	Corolla	Toyota	ABC1234	Prata	2020	2
+3	74591106047	Uno	Fiat	DEF5678	Vermelho	2018	1
+4	70382798074	Civic	Honda	GHI9012	Preto	2021	2
+5	12673452095	Gol	Volkswagen	JKL3456	Branco	2019	1
+6	86347043009	Onix	Chevrolet	MNO7890	Azul	2022	1
+10	289343249	Siena	FIAT	OIS9023	Branco	2016	2
+\.
+
+
+--
+-- Data for Name: comentario_corrida; Type: TABLE DATA; Schema: public; Owner: uber
+--
+
+COPY public.comentario_corrida (id_comentario, id_corrida, id_usuario, comentario) FROM stdin;
+1	16	2	Bom
+2	20	3	Motorista educado e carro limpo.
+3	19	2	O motorista foi um pouco impaciente no trânsito e não me ajudou com a minha bagagem.
+4	18	4	Gostei do carro, mas o motorista poderia ter sido um pouco mais comunicativo durante a corrida.
+5	17	5	Corrida excelente! O motorista foi muito educado e atencioso, além do carro ser bastante confortável.
+\.
+
+
+--
+-- Data for Name: corrida; Type: TABLE DATA; Schema: public; Owner: uber
+--
+
+COPY public.corrida (id_corrida, id_usuario, id_motorista, id_carro, data_hora_inicio, data_hora_fim, distancia_km, duracao_minutos, local_origem, local_destino, preco) FROM stdin;
+18	2	5	6	2023-03-22 12:00:00	2023-03-22 12:30:00	3.2	30	(-10.180476,-48.332942)	(-10.197516,-48.322257)	17.927
+19	4	1	2	2023-03-22 14:00:00	2023-03-22 14:20:00	2.5	20	(-10.181965,-48.336922)	(-10.203525,-48.336789)	15.169
+16	2	2	3	2023-03-22 08:00:00	2023-03-22 08:30:00	5.5	30	(-10.173457,-48.32881)	(-10.207239,-48.312059)	26.201
+45	5	5	4	2022-03-15 12:30:00	2023-03-15 13:15:00	7.9	45	(-10.218362,-48.327969)	(-10.169687,-48.301482)	33.096000000000004
+43	3	1	5	2022-01-05 08:00:00	2023-01-05 08:20:00	8.3	20	(-10.208816,-48.332956)	(-10.163822,-48.307586)	34.475
+17	3	4	5	2023-03-22 10:00:00	2023-03-22 10:45:00	10.2	45	(-10.171778,-48.327329)	(-10.235228,-48.312871)	39.991
+42	2	4	6	2022-02-12 10:00:00	2023-02-12 10:30:00	12.7	30	(-10.208415,-48.329963)	(-10.133412,-48.340113)	44.128
+44	4	3	2	2022-02-28 19:00:00	2023-02-28 19:45:00	15.2	45	(-10.211677,-48.328766)	(-10.324399,-48.309675)	52.402
+20	5	3	4	2023-03-22 16:00:00	2023-03-22 16:15:00	1.8	15	(-10.183693,-48.347196)	(-10.190188,-48.338173)	20
+41	6	2	3	2022-03-20 15:00:00	2023-03-20 15:30:00	30.5	30	(-10.184664,-48.350361)	(-10.32649,-48.242013)	97.909
+\.
+
+
+--
+-- Data for Name: motorista; Type: TABLE DATA; Schema: public; Owner: uber
+--
+
+COPY public.motorista (id_motorista, nome_motorista, email, senha, cpf, data_nascimento, telefone, cnh, id_carro) FROM stdin;
+1	Carlos Oliveira	carlos.oliveira@gmail.com	123456	58132138058	1985-03-12	+55 11 99999-9999	12345678901	2
+2	Fernanda Santos	fernanda.santos@hotmail.com	abcdef	17755160084	1990-07-15	+55 11 88888-8888	23456789012	3
+3	Roberto Costa	roberto.costa@outlook.com	qwerty	92854874080	1978-12-25	+55 11 77777-7777	34567890123	4
+4	Camila Rocha	camila.rocha@egmail.com	senha123	75984164000	1986-02-28	+55 11 66666-6666	45678901234	5
+5	Márcio Alves	marcio.alves@gmail.com	abcd1234	37869434000	1995-09-08	+55 11 55555-5555	56789012345	6
+\.
+
+
+--
+-- Data for Name: preco_corrida; Type: TABLE DATA; Schema: public; Owner: uber
+--
+
+COPY public.preco_corrida (km_inicio, km_final, taxa) FROM stdin;
+0	5.999	2.5
+6	10.999	2.35
+11	10000	2.15
+\.
+
+
+--
+-- Data for Name: tipo_carro; Type: TABLE DATA; Schema: public; Owner: uber
+--
+
+COPY public.tipo_carro (id, categoria, taxa_carro) FROM stdin;
+1	básico	1.153
+2	médio	1.379
+3	luxo	1.586
+\.
+
+
+--
+-- Data for Name: usuario; Type: TABLE DATA; Schema: public; Owner: uber
+--
+
+COPY public.usuario (id_usuario, nome_usuario, email, senha, cpf, data_nascimento, telefone, data_cadatro) FROM stdin;
+2	Pedro Silva	pedro.silva@gmail.com	123456	00000000000	1990-05-01	+55 71 99999-9999	2023-03-19 18:34:30
+3	Maria Oliveira	maria.oliveira@gmail.com	abcdef	019028305843	1995-08-23	+55 14 88888-8888	2023-01-01 13:24:33
+4	Pedro Santos	pedro.santos@gmail.com	qwerty	0928473928342	1985-12-15	+55 11 77777-7777	2023-01-21 23:54:53
+5	Ana Rodrigues	ana.rodrigues@gmail.com	senha123	09283749834	2000-02-20	+55 21 66666-6666	2023-02-04 15:34:57
+6	Lucas Souza	lucas.souza@gmail.com	abcd1234	47495839203	1998-11-10	+55 17 55555-5555	2023-03-20 07:34:57
+\.
+
+
+--
+-- Name: ateração_prec_corridas_id_alteracao_seq; Type: SEQUENCE SET; Schema: public; Owner: uber
+--
+
+SELECT pg_catalog.setval('public."ateração_prec_corridas_id_alteracao_seq"', 13, true);
+
+
+--
+-- Name: avaliacao_id_seq; Type: SEQUENCE SET; Schema: public; Owner: uber
+--
+
+SELECT pg_catalog.setval('public.avaliacao_id_seq', 33, true);
+
+
+--
+-- Name: carro_id_seq; Type: SEQUENCE SET; Schema: public; Owner: uber
+--
+
+SELECT pg_catalog.setval('public.carro_id_seq', 39, true);
+
+
+--
+-- Name: comentario_corrida_id_seq; Type: SEQUENCE SET; Schema: public; Owner: uber
+--
+
+SELECT pg_catalog.setval('public.comentario_corrida_id_seq', 33, true);
+
+
+--
+-- Name: corrida_id_seq; Type: SEQUENCE SET; Schema: public; Owner: uber
+--
+
+SELECT pg_catalog.setval('public.corrida_id_seq', 53, true);
+
+
+--
+-- Name: motorista_id_seq; Type: SEQUENCE SET; Schema: public; Owner: uber
+--
+
+SELECT pg_catalog.setval('public.motorista_id_seq', 41, true);
+
+
+--
+-- Name: tipo_carro_id_seq; Type: SEQUENCE SET; Schema: public; Owner: uber
+--
+
+SELECT pg_catalog.setval('public.tipo_carro_id_seq', 4, true);
+
+
+--
+-- Name: usuario_id_seq; Type: SEQUENCE SET; Schema: public; Owner: uber
+--
+
+SELECT pg_catalog.setval('public.usuario_id_seq', 33, true);
+
+
+--
+-- Name: alteracao_prec_corridas ateração_prec_corridas_pkey; Type: CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.alteracao_prec_corridas
+    ADD CONSTRAINT "ateração_prec_corridas_pkey" PRIMARY KEY (id_alteracao);
+
+
+--
+-- Name: avaliacao avaliacao_pkey; Type: CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.avaliacao
+    ADD CONSTRAINT avaliacao_pkey PRIMARY KEY (id_avalicao);
+
+
+--
+-- Name: carro carro_chassi_key; Type: CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.carro
+    ADD CONSTRAINT carro_chassi_key UNIQUE (chassi);
+
+
+--
+-- Name: carro carro_pkey; Type: CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.carro
+    ADD CONSTRAINT carro_pkey PRIMARY KEY (id_carro);
+
+
+--
+-- Name: carro carro_placa_key; Type: CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.carro
+    ADD CONSTRAINT carro_placa_key UNIQUE (placa);
+
+
+--
+-- Name: comentario_corrida comentario_corrida_pkey; Type: CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.comentario_corrida
+    ADD CONSTRAINT comentario_corrida_pkey PRIMARY KEY (id_comentario);
+
+
+--
+-- Name: corrida corrida_pkey; Type: CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.corrida
+    ADD CONSTRAINT corrida_pkey PRIMARY KEY (id_corrida);
+
+
+--
+-- Name: motorista motorista_cpf_key; Type: CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.motorista
+    ADD CONSTRAINT motorista_cpf_key UNIQUE (cpf);
+
+
+--
+-- Name: motorista motorista_email_key; Type: CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.motorista
+    ADD CONSTRAINT motorista_email_key UNIQUE (email);
+
+
+--
+-- Name: motorista motorista_pkey; Type: CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.motorista
+    ADD CONSTRAINT motorista_pkey PRIMARY KEY (id_motorista);
+
+
+--
+-- Name: tipo_carro tipo_carro_pkey; Type: CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.tipo_carro
+    ADD CONSTRAINT tipo_carro_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: usuario usuario_cpf_key; Type: CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.usuario
+    ADD CONSTRAINT usuario_cpf_key UNIQUE (cpf);
+
+
+--
+-- Name: usuario usuario_email_key; Type: CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.usuario
+    ADD CONSTRAINT usuario_email_key UNIQUE (email);
+
+
+--
+-- Name: usuario usuario_pkey; Type: CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.usuario
+    ADD CONSTRAINT usuario_pkey PRIMARY KEY (id_usuario);
+
+
+--
+-- Name: carro_chassi_idx; Type: INDEX; Schema: public; Owner: uber
+--
+
+CREATE INDEX carro_chassi_idx ON public.carro USING btree (chassi);
+
+
+--
+-- Name: corrida_distancia_km_idx; Type: INDEX; Schema: public; Owner: uber
+--
+
+CREATE INDEX corrida_distancia_km_idx ON public.corrida USING btree (distancia_km);
+
+
+--
+-- Name: carros_cadastrados_no_app _RETURN; Type: RULE; Schema: public; Owner: uber
+--
+
+CREATE OR REPLACE VIEW public.carros_cadastrados_no_app AS
+ SELECT carro.id_carro,
+    carro.modelo,
+    carro.marca,
+    carro.cor,
+    carro.ano,
+    motorista.id_motorista,
+    avg(avaliacao.nota) AS avg
+   FROM ((public.motorista
+     JOIN public.carro ON ((carro.id_carro = motorista.id_carro)))
+     JOIN public.avaliacao ON ((avaliacao.id_motorista = motorista.id_motorista)))
+  GROUP BY motorista.id_motorista, carro.id_carro;
+
+
+--
+-- Name: corrida trigger_alt_preco_corridas; Type: TRIGGER; Schema: public; Owner: uber
+--
+
+CREATE TRIGGER trigger_alt_preco_corridas AFTER INSERT OR DELETE OR UPDATE ON public.corrida FOR EACH ROW EXECUTE FUNCTION public.audit_alt_preco_corridas();
+
+
+--
+-- Name: alteracao_prec_corridas ateração_prec_corridas_id_corrida_fkey; Type: FK CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.alteracao_prec_corridas
+    ADD CONSTRAINT "ateração_prec_corridas_id_corrida_fkey" FOREIGN KEY (id_corrida) REFERENCES public.corrida(id_corrida);
+
+
+--
+-- Name: avaliacao avaliacao_id_corrida_fkey; Type: FK CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.avaliacao
+    ADD CONSTRAINT avaliacao_id_corrida_fkey FOREIGN KEY (id_corrida) REFERENCES public.corrida(id_corrida);
+
+
+--
+-- Name: avaliacao avaliacao_id_motorista_fkey; Type: FK CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.avaliacao
+    ADD CONSTRAINT avaliacao_id_motorista_fkey FOREIGN KEY (id_motorista) REFERENCES public.motorista(id_motorista);
+
+
+--
+-- Name: avaliacao avaliacao_id_usuario_fkey; Type: FK CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.avaliacao
+    ADD CONSTRAINT avaliacao_id_usuario_fkey FOREIGN KEY (id_usuario) REFERENCES public.usuario(id_usuario);
+
+
+--
+-- Name: carro carro_categoria_fkey; Type: FK CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.carro
+    ADD CONSTRAINT carro_categoria_fkey FOREIGN KEY (categoria) REFERENCES public.tipo_carro(id);
+
+
+--
+-- Name: comentario_corrida comentario_corrida_id_corrida_fkey; Type: FK CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.comentario_corrida
+    ADD CONSTRAINT comentario_corrida_id_corrida_fkey FOREIGN KEY (id_corrida) REFERENCES public.corrida(id_corrida);
+
+
+--
+-- Name: comentario_corrida comentario_corrida_id_usuario_fkey; Type: FK CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.comentario_corrida
+    ADD CONSTRAINT comentario_corrida_id_usuario_fkey FOREIGN KEY (id_usuario) REFERENCES public.usuario(id_usuario);
+
+
+--
+-- Name: corrida corrida_id_carro_fkey; Type: FK CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.corrida
+    ADD CONSTRAINT corrida_id_carro_fkey FOREIGN KEY (id_carro) REFERENCES public.carro(id_carro);
+
+
+--
+-- Name: corrida corrida_id_motorista_fkey; Type: FK CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.corrida
+    ADD CONSTRAINT corrida_id_motorista_fkey FOREIGN KEY (id_motorista) REFERENCES public.motorista(id_motorista);
+
+
+--
+-- Name: corrida corrida_id_usuario_fkey; Type: FK CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.corrida
+    ADD CONSTRAINT corrida_id_usuario_fkey FOREIGN KEY (id_usuario) REFERENCES public.usuario(id_usuario);
+
+
+--
+-- Name: motorista fk_id_carro; Type: FK CONSTRAINT; Schema: public; Owner: uber
+--
+
+ALTER TABLE ONLY public.motorista
+    ADD CONSTRAINT fk_id_carro FOREIGN KEY (id_carro) REFERENCES public.carro(id_carro);
+
+
+--
+-- Name: SCHEMA public; Type: ACL; Schema: -; Owner: pg_database_owner
+--
+
+GRANT ALL ON SCHEMA public TO uber;
+
+
+--
+-- PostgreSQL database dump complete
+--
+
